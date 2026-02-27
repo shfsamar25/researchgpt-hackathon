@@ -1,0 +1,109 @@
+import os
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from dotenv import load_dotenv
+import google.generativeai as genai
+
+load_dotenv()
+
+# Read key from .env → GEMINI_API_KEY=...
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=GEMINI_API_KEY)
+app = FastAPI()
+
+# CORS: allow all origins (so file:// index.html can call the API)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # allow all
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class TopicRequest(BaseModel):
+    topic: str
+
+class ReviewResponse(BaseModel):
+    background: str
+    key_points: str
+    research_gaps: str
+    future_directions: str
+
+SYSTEM_PROMPT = """
+You are an AI research assistant that creates structured literature-review style overviews.
+
+Given a research topic, you will write a SHORT, clear, structured output with these sections:
+
+1. Background and context
+2. Key themes / existing work
+3. Research gaps
+4. Possible future directions
+
+Constraints:
+- Write in simple, readable academic English.
+- Do NOT invent citations, DO NOT add fake paper titles or author names.
+- Focus on high-level patterns and gaps, not specific papers.
+- Keep each section 3–6 bullet points or short paragraphs.
+"""
+
+def build_user_prompt(topic: str) -> str:
+    return f"""
+Research topic: {topic}
+
+Write a structured literature-review style summary with the 4 sections mentioned.
+Even if you do not have access to specific papers, infer typical themes, gaps, and directions based on general knowledge of the area.
+"""
+
+@app.post("/generate_review", response_model=ReviewResponse)
+async def generate_review(req: TopicRequest):
+    try:
+        model = genai.GenerativeModel(model_name="gemini-1.5-flash")
+        prompt = SYSTEM_PROMPT + "\n\n" + build_user_prompt(req.topic)
+
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+
+        sections = {
+            "background": "",
+            "key_points": "",
+            "research_gaps": "",
+            "future_directions": "",
+        }
+
+        current = None
+        lines = text.splitlines()
+        for line in lines:
+            lower = line.lower().strip()
+            if "background" in lower and "context" in lower:
+                current = "background"
+                continue
+            if "key themes" in lower or "existing work" in lower:
+                current = "key_points"
+                continue
+            if "research gaps" in lower:
+                current = "research_gaps"
+                continue
+            if "future directions" in lower or "future work" in lower:
+                current = "future_directions"
+                continue
+            if current:
+                sections[current] += line + "\n"
+
+        if not any(sections.values()):
+            sections["background"] = text
+
+        return ReviewResponse(
+            background=sections["background"].strip(),
+            key_points=sections["key_points"].strip(),
+            research_gaps=sections["research_gaps"].strip(),
+            future_directions=sections["future_directions"].strip(),
+        )
+    except Exception as e:
+        return ReviewResponse(
+            background=f"Error occurred: {e}",
+            key_points="",
+            research_gaps="",
+            future_directions="",
+        )
+
