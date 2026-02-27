@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ResearchGPT · AI Literature Review Assistant</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, #020617, #020617);
+      color: #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 1120px;
+      background: rgba(15, 23, 42, 0.96);
+      border-radius: 20px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow:
+        0 28px 70px rgba(0, 0, 0, 0.75),
+        0 0 0 1px rgba(15, 23, 42, 0.9);
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 2fr);
+      gap: 1px;
+      overflow: hidden;
+    }
+
+    .left-pane {
+      padding: 22px 22px 20px;
+      background: linear-gradient(145deg, rgba(15,23,42,0.98), rgba(15,23,42,0.9));
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      border-right: 1px solid rgba(31, 41, 55, 0.9);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+
+    .brand-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 11px;
+      background: radial-gradient(circle at 30% 20%, #38bdf8, #6366f1);
+      box-shadow:
+        0 0 0 1px rgba(15,23,42,0.8),
+        0 12px 28px rgba(59,130,246,0.6);
+    }
+
+    .brand-text h1 {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .brand-text p {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    .tag-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    .pill {
+      padding: 3px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: rgba(15,23,42,0.95);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #9ca3af;
+    }
+
+    .label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      border-radius: 12px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: radial-gradient(circle at top left, rgba(15,23,42,0.98), rgba(15,23,42,0.95));
+      color: #e5e7eb;
+      padding: 10px 12px;
+      font-size: 13px;
+      resize: vertical;
+      outline: none;
+      line-height: 1.45;
+    }
+
+    textarea::placeholder {
+      color: #6b7280;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      font-size: 11px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: rgba(15, 23, 42, 0.96);
+      color: #d1d5db;
+      cursor: pointer;
+      transition: all 0.15s ease-out;
+      white-space: nowrap;
+    }
+
+    .chip:hover {
+      border-color: #4b8df8;
+      color: #e5e7eb;
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4);
+    }
+
+    .actions-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .status {
+      font-size: 11px;
+      color: #9ca3af;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+    }
+
+    .status-dot.loading {
+      background: #facc15;
+      box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.15);
+    }
+
+    button {
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: none;
+      font-size: 12px;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #38bdf8, #6366f1);
+      color: #0b1120;
+      box-shadow: 0 14px 30px rgba(37, 99, 235, 0.7);
+      transition: transform 0.1s ease-out, box-shadow 0.1s ease-out, filter 0.1s ease-out;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+      box-shadow: 0 18px 36px rgba(37, 99, 235, 0.95);
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: 0 10px 22px rgba(37, 99, 235, 0.6);
+    }
+
+    .right-pane {
+      padding: 20px 20px 18px;
+      background: radial-gradient(circle at 10% 0, rgba(30,64,175,0.35), rgba(15,23,42,1));
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 2px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #9ca3af;
+    }
+
+    .section-subtitle {
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 10px;
+      flex: 1;
+    }
+
+    .card {
+      border-radius: 14px;
+      border: 1px solid rgba(55, 65, 81, 0.9);
+      background: radial-gradient(circle at top left,
+        rgba(15, 23, 42, 0.98),
+        rgba(15, 23, 42, 0.92));
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.9);
+      padding: 10px 11px;
+      font-size: 12px;
+      color: #d1d5db;
+      white-space: pre-line;
+      overflow-y: auto;
+      max-height: 190px;
+    }
+
+    .card h3 {
+      font-size: 12px;
+      font-weight: 500;
+      margin-bottom: 4px;
+      color: #e5e7eb;
+    }
+
+    .card-placeholder {
+      color: #6b7280;
+      font-size: 11px;
+    }
+
+    @media (max-width: 840px) {
+      .app-shell {
+        grid-template-columns: minmax(0, 1fr);
+      }
+      body {
+        padding: 12px;
+      }
+      .card {
+        max-height: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <div class="left-pane">
+      <div class="brand">
+        <div class="brand-main">
+          <div class="logo-dot"></div>
+          <div class="brand-text">
+            <h1>ResearchGPT</h1>
+            <p>Topic‑aware, structured literature review outlines</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tag-row">
+        <span class="pill">FastAPI · Local</span>
+        <span class="pill">Outline Generator</span>
+      </div>
+
+      <div>
+        <div class="label" style="margin-bottom: 6px;">Research topic</div>
+        <textarea id="topic-input" placeholder="e.g. AI agents in software engineering"></textarea>
+      </div>
+
+      <div>
+        <div class="label" style="margin-bottom: 6px;">Sample topics</div>
+        <div class="chips">
+          <div class="chip" onclick="setTopic('AI agents in software engineering workflows')">AI agents in software engineering</div>
+          <div class="chip" onclick="setTopic('LLMs for medical decision support systems')">LLMs in healthcare</div>
+          <div class="chip" onclick="setTopic('Generative AI for educational content and tutoring')">Generative AI in education</div>
+          <div class="chip" onclick="setTopic('Privacy‑preserving federated learning for edge devices')">Federated learning & privacy</div>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <div class="status" id="status-text">
+          <span class="status-dot" id="status-dot"></span>
+          Backend: http://127.0.0.1:8000 · Ready
+        </div>
+        <button onclick="generateReview()">
+          <span>⚡ Generate outline</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="right-pane">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Literature review layout</div>
+          <div class="section-subtitle">Four sections to speed up drafting and presentation</div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>Background & context</h3>
+          <div id="background" class="card-placeholder">
+            Type a topic on the left and generate an academic‑style overview of the problem space.
+          </div>
+        </div>
+        <div class="card">
+          <h3>Key themes / existing work</h3>
+          <div id="key_points" class="card-placeholder">
+            This area will summarise main strands of prior work, methods, and application domains.
+          </div>
+        </div>
+        <div class="card">
+          <h3>Research gaps</h3>
+          <div id="research_gaps" class="card-placeholder">
+            Here you will see under‑explored questions, missing evaluations, and unresolved challenges.
+          </div>
+        </div>
+        <div class="card">
+          <h3>Future directions</h3>
+          <div id="future_directions" class="card-placeholder">
+            This section highlights promising avenues for future research and deployment.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "http://127.0.0.1:8000/generate_review";
+
+    function setTopic(text) {
+      document.getElementById("topic-input").value = text;
+    }
+
+    async function generateReview() {
+      const topic = document.getElementById("topic-input").value.trim();
+      const statusText = document.getElementById("status-text");
+      const statusDot = document.getElementById("status-dot");
+
+      if (!topic) {
+        alert("Please enter a research topic.");
+        return;
+      }
+
+      statusText.textContent = "Backend: http://127.0.0.1:8000 · Generating outline…";
+      statusDot.classList.add("loading");
+
+      document.getElementById("background").textContent = "Generating background…";
+      document.getElementById("key_points").textContent = "Generating key themes…";
+      document.getElementById("research_gaps").textContent = "Generating research gaps…";
+      document.getElementById("future_directions").textContent = "Generating future directions…";
+
+      try {
+        const resp = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ topic })
+        });
+
+        if (!resp.ok) {
+          throw new Error("Backend error: " + resp.status);
+        }
+
+        const data = await resp.json();
+
+        document.getElementById("background").textContent =
+          data.background || "(No background returned)";
+        document.getElementById("key_points").textContent =
+          data.key_points || "(No key points returned)";
+        document.getElementById("research_gaps").textContent =
+          data.research_gaps || "(No research gaps returned)";
+        document.getElementById("future_directions").textContent =
+          data.future_directions || "(No future directions returned)";
+
+        statusText.textContent = "Backend: http://127.0.0.1:8000 · Outline generated.";
+        statusDot.classList.remove("loading");
+      } catch (err) {
+        console.error(err);
+        statusText.textContent =
+          "Error · Check if FastAPI backend is running on http://127.0.0.1:8000";
+        statusDot.classList.remove("loading");
+        document.getElementById("background").textContent =
+          "Error while generating. Please check backend.";
+      }
+    }
+  </script>
+</body>
+</html>
+
